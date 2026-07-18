@@ -1,4 +1,4 @@
-function SettingsPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Settings</h1>
@@ -6,5 +6,3 @@ function SettingsPage() {
     </section>
   )
 }
-
-export default SettingsPage
