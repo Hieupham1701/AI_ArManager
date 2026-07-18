@@ -1,4 +1,4 @@
-function InvoicesPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Invoices</h1>
@@ -6,5 +6,3 @@ function InvoicesPage() {
     </section>
   )
 }
-
-export default InvoicesPage

@@ -1,4 +1,4 @@
-function AnalyticsPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Analytics</h1>
@@ -6,5 +6,3 @@ function AnalyticsPage() {
     </section>
   )
 }
-
-export default AnalyticsPage

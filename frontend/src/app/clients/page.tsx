@@ -1,4 +1,4 @@
-function ClientsPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Clients</h1>
@@ -6,5 +6,3 @@ function ClientsPage() {
     </section>
   )
 }
-
-export default ClientsPage

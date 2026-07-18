@@ -1,4 +1,4 @@
-function OverviewPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Overview</h1>
@@ -6,5 +6,3 @@ function OverviewPage() {
     </section>
   )
 }
-
-export default OverviewPage

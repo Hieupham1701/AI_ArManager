@@ -1,4 +1,4 @@
-function TransitionPage() {
+export default function Page() {
   return (
     <section className="page-card">
       <h1>Transition</h1>
@@ -6,5 +6,3 @@ function TransitionPage() {
     </section>
   )
 }
-
-export default TransitionPage
