@@ -1,54 +1,23 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import TopNav from "./TopNav";
 
 export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
+  /*const cookieStore = await cookies();
   if (!cookieStore.get("ar_session")) {
     redirect("/login");
-  }
+  }*/
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">AI AR Manager</div>
+    <div className="min-h-screen bg-slate-50">
+      <TopNav />
 
-        <nav className="nav-links">
-          <Link href="/overview" className="nav-link">
-            Overview
-          </Link>
-
-          <Link href="/invoices" className="nav-link">
-            Invoices
-          </Link>
-
-          <Link href="/clients" className="nav-link">
-            Clients
-          </Link>
-
-          <Link href="/analytics" className="nav-link">
-            Analytics
-          </Link>
-
-          <Link href="/transition" className="nav-link">
-            Transition
-          </Link>
-
-          <Link href="/settings" className="nav-link">
-            Settings
-          </Link>
-
-          <Link href="/login" className="nav-link">
-            Log In
-          </Link>
-        </nav>
-      </aside>
-
-      <main className="main-content">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">{children}</main>
     </div>
   );
 }
+
