@@ -8,6 +8,7 @@ const navItems = [
   { href: "/invoices", label: "Invoices" },
   { href: "/clients", label: "Clients" },
   { href: "/analytics", label: "Analytics" },
+  { href: "/communications", label: "Inbox" },
   { href: "/settings", label: "Settings" },
 ];
 
