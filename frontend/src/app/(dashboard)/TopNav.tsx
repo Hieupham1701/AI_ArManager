@@ -19,23 +19,23 @@ export default function TopNav() {
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
       <div className="flex w-full items-center gap-6 px-4 sm:px-6 lg:px-8">
         <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-carolina-600">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.8}
-                className="h-6 w-6 text-white"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M7 3h8l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 3v4h4" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6M9 15h6M9 9h2" />
-              </svg>
-            </span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            className="h-6 w-6 text-white"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M7 3h8l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"
+            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 3v4h4" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6M9 15h6M9 9h2" />
+          </svg>
+        </span>
         <span className="whitespace-nowrap py-4 text-base font-semibold text-slate-900">
           AI AR Manager
         </span>
@@ -47,11 +47,10 @@ export default function TopNav() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`whitespace-nowrap border-b-2 px-3 py-4 text-sm font-medium transition ${
-                  active
-                    ? "border-carolina-600 text-carolina-600"
-                    : "border-transparent text-slate-600 hover:border-carolina-200 hover:text-carolina-600"
-                }`}
+                className={`whitespace-nowrap border-b-2 px-3 py-4 text-sm font-medium transition ${active
+                  ? "border-carolina-600 text-carolina-600"
+                  : "border-transparent text-slate-600 hover:border-carolina-200 hover:text-carolina-600"
+                  }`}
               >
                 {item.label}
               </Link>
