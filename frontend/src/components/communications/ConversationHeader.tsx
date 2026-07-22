@@ -4,6 +4,7 @@ import { Mail, Phone, FileText, MoreHorizontal } from "lucide-react";
 import { Client, ACCENT } from "../../lib/communications/types";
 import { overdueConf, formatCurrency } from "../../lib/communications/helpers";
 
+
 interface ConversationHeaderProps {
 	client?: Client;
 }

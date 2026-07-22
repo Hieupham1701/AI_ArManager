@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 import { ACCENT, Client, Message } from "../../lib/communications/types";
 import { getUnreadCount, getPreview, overdueConf, formatCurrency, getLatestMessageTime } from "../../lib/communications/helpers";
 
+
 interface ClientListProps {
 	clients: Client[];
 	messages: Message[];

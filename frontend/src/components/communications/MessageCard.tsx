@@ -4,6 +4,7 @@ import { Mail, MessageSquare, Check, CheckCheck, AlertTriangle } from "lucide-re
 import { Message } from "../../lib/communications/types";
 import { formatTime, formatDateDivider, intentConf, channelConf } from "../../lib/communications/helpers";
 
+
 interface MessageCardProps {
 	message: Message;
 	showDateDivider?: boolean;

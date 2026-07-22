@@ -8,6 +8,7 @@ import { MessageComposer } from "../../../components/communications/Composer";
 import { mockClients, mockMessages as initialMessages } from "../../../lib/communications/mockData";
 import { Message, Channel } from "../../../lib/communications/types";
 
+
 export default function CommunicationsPage() {
   // STATE MANAGEMENT
   const [clients] = useState(mockClients);

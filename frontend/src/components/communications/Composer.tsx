@@ -105,7 +105,7 @@ export function MessageComposer({
 		if (!replyingTo) setSubject("");
 	};
 
-	// Determine recipient contact based on channel and client info
+	// Determine recipient contact based on channel and client
 	const recipientContact = channel === "email"
 		? (client?.email || recipientEmail)
 		: (client?.phone || recipientPhone);
