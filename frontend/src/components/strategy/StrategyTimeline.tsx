@@ -189,44 +189,7 @@ export default function StrategyTimeline({
 
   return (
     <div className="min-h-screen bg-[#FAFAFA]">
-      {/* Top Navigation Header */}
-      <nav className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <Bot className="h-6 w-6 text-[#2B85FF]" />
-            <span className="text-[16px] font-semibold text-[#1e293b]">AI Invoice Management Agent</span>
-          </div>
-          <div className="hidden items-center gap-1 text-[12px] text-[#64748b]">
-            <span className="hover:text-[#2B85FF] cursor-pointer">Overview</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-[#2B85FF] font-medium">Strategy</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="hover:text-[#2B85FF] cursor-pointer">Invoices</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="hover:text-[#2B85FF] cursor-pointer">Clients</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="hover:text-[#2B85FF] cursor-pointer">Reports</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="hover:text-[#2B85FF] cursor-pointer">Settings</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <button className="relative p-2 text-[#64748b] hover:text-[#2B85FF] transition-colors">
-            <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
-          </button>
-          <button className="p-2 text-[#64748b] hover:text-[#2B85FF] transition-colors">
-            <Settings className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5">
-            <div className="h-6 w-6 rounded-full bg-[#2B85FF] flex items-center justify-center text-white text-[10px] font-semibold">
-              AJ
-            </div>
-            <span className="text-[12px] font-medium text-slate-700">AJ</span>
-          </div>
-        </div>
-      </nav>
-
+      
       {/* Breadcrumb & Page Header */}
       <div className="border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex items-center gap-2 text-[12px] text-slate-500 mb-2">
