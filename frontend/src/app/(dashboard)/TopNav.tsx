@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+import { logout } from "../../lib/auth/api";
+import { clearSession, getSession } from "../../lib/auth/session";
 
 const navItems = [
   { href: "/overview", label: "Overview" },
@@ -14,6 +17,23 @@ const navItems = [
 
 export default function TopNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = async () => {
+    setIsSigningOut(true);
+    const session = getSession();
+    try {
+      if (session) {
+        await logout(session.access_token);
+      }
+    } catch {
+      // Clear the local session regardless of API errors.
+    } finally {
+      clearSession();
+      router.push("/login");
+    }
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
@@ -84,7 +104,9 @@ export default function TopNav() {
 
           <button
             type="button"
-            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-carolina-600"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-carolina-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -100,7 +122,7 @@ export default function TopNav() {
                 d="M15 17l5-5-5-5M20 12H9M13 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7"
               />
             </svg>
-            Sign out
+            {isSigningOut ? "Signing out…" : "Sign out"}
           </button>
         </div>
       </div>
