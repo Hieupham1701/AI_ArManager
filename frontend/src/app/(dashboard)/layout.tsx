@@ -7,10 +7,10 @@ export default async function DashboardLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  /*const cookieStore = await cookies();
+  const cookieStore = await cookies();
   if (!cookieStore.get("ar_session")) {
     redirect("/login");
-  }*/
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
