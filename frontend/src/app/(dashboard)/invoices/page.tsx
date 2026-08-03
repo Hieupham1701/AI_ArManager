@@ -59,9 +59,9 @@ export default function InvoicesPage() {
   };
 
   return (
-    <div className="relative flex flex-1 min-h-0 overflow-hidden bg-[#FAFAFA]">
+    <div className="relative flex flex-1 min-h-0 flex-col overflow-hidden bg-[#FAFAFA] lg:grid lg:grid-cols-[minmax(0,1fr)_400px]">
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-6 transition-all duration-300">
+      <div className="min-w-0 overflow-y-auto p-4 sm:p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-[16px] font-bold text-slate-900">Invoices</h1>
@@ -89,8 +89,9 @@ export default function InvoicesPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
-          <table className="w-full text-left border-collapse">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[860px] text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
                 <th className="px-4 py-3 text-[12px] font-semibold text-slate-500 uppercase tracking-wider">Invoice ID</th>
@@ -143,6 +144,7 @@ export default function InvoicesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
 
@@ -151,9 +153,9 @@ export default function InvoicesPage() {
         <div
           role="complementary"
           aria-label="Invoice quick view"
-          className="w-[400px] h-full bg-white border-l border-slate-200 shadow-xl flex flex-col flex-shrink-0"
+          className="fixed inset-y-0 right-0 z-40 w-full max-w-[400px] border-l border-slate-200 bg-white shadow-xl sm:w-[400px] lg:static lg:z-auto lg:h-full lg:w-[400px] lg:max-w-none lg:shadow-none"
         >
-          <div className="p-6 pb-10 flex-1 overflow-y-auto">
+          <div className="flex h-full flex-col overflow-y-auto p-6 pb-10">
             {/* Panel Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">

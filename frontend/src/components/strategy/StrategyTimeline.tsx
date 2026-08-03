@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   CheckCircle2,
   MessageSquare,
@@ -23,6 +24,7 @@ export interface StrategyTimelineProps {
     icon?: 'clock' | 'alert';
   };
   compact?: boolean;
+  initialVisibleSteps?: number;
 }
 
 /* ------------------------------------------------------------------ */
@@ -126,9 +128,17 @@ export default function StrategyTimeline({
   subtitle,
   scheduleStatus,
   compact = false,
+  initialVisibleSteps,
 }: StrategyTimelineProps) {
+  const hasStepLimit =
+    typeof initialVisibleSteps === 'number' &&
+    initialVisibleSteps > 0 &&
+    steps.length > initialVisibleSteps;
+  const [isExpanded, setIsExpanded] = useState(false);
+  const visibleSteps = hasStepLimit && !isExpanded ? steps.slice(0, initialVisibleSteps) : steps;
+
   return (
-    <div className="h-full rounded-[12px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+    <div className="w-full rounded-[12px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-[16px] font-semibold text-slate-800">{title}</h2>
@@ -149,7 +159,7 @@ export default function StrategyTimeline({
         <div className="absolute bottom-3 left-[23px] top-3 w-0.5 bg-slate-200" />
 
         <div className={compact ? 'space-y-4' : 'space-y-5'}>
-          {steps.map((step, index) => {
+          {visibleSteps.map((step, index) => {
             const iconColor = getStepIconColor(step.status);
             const iconBg = getStepIconBg(step.status);
             const cardClasses = getStepCardClasses(step.status);
@@ -200,6 +210,16 @@ export default function StrategyTimeline({
           })}
         </div>
       </div>
+
+      {hasStepLimit ? (
+        <button
+          type="button"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="mt-5 inline-flex items-center rounded-[10px] border border-blue-100 bg-blue-50 px-3 py-1.5 text-[12px] font-semibold text-[#2B85FF] hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-[#2B85FF]/20"
+        >
+          {isExpanded ? 'View less' : `View more (${steps.length - visibleSteps.length})`}
+        </button>
+      ) : null}
     </div>
   );
 }

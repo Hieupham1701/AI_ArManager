@@ -42,7 +42,7 @@ export default function CommunicationHistory({ communications }: CommunicationHi
   const deliveredCount = communications.filter(c => c.status === 'delivered').length;
 
   return (
-    <div className="h-full rounded-[12px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
+    <div className="w-full rounded-[12px] border border-slate-200 bg-white p-6 shadow-[0_1px_2px_rgba(15,23,42,0.05)]">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-[16px] font-semibold text-slate-900">Communication History</h2>
         <span className="cursor-pointer text-[12px] font-semibold text-[#4B9CD3] hover:text-[#2B85FF]">View all</span>

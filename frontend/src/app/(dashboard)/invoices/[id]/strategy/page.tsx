@@ -208,26 +208,28 @@ export default async function InvoiceStrategyPage({
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
         <div className="space-y-6">
           <InvoiceSummary invoice={invoice} />
           <PrimaryContact contact={contact} insight={insight} />
         </div>
 
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <StrategyTimeline
             steps={timeline}
             title="Collection Strategy Timeline"
             subtitle={`Automated ${invoice.collectionProgress.totalSteps}-stage sequence · ${invoice.collectionProgress.currentStage} active`}
             scheduleStatus={{ label: 'On Schedule', icon: 'clock' }}
+            initialVisibleSteps={3}
           />
+
+          <div className="grid gap-6 2xl:grid-cols-[420px_minmax(0,1fr)]">
+            <NextActionCard action={nextAction} />
+            <AIReminder reminder={reminder} />
+          </div>
+
           <CommunicationHistory communications={communications} />
         </div>
-      </div>
-
-      <div className="mt-6 grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
-        <NextActionCard action={nextAction} />
-        <AIReminder reminder={reminder} />
       </div>
     </div>
   );
