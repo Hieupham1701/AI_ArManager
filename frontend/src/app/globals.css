@@ -1,2 +1,29 @@
-@config "../../tailwind.config.ts";
 @import "tailwindcss";
+
+@theme {
+  --color-carolina-50: #f0f8fc;
+  --color-carolina-100: #dceef7;
+  --color-carolina-200: #b9ddef;
+  --color-carolina-300: #8fc7e4;
+  --color-carolina-400: #66b0da;
+  --color-carolina-500: #4b9cd3;
+  --color-carolina-600: #3a86c0;
+  --color-carolina-700: #2f6d9c;
+  --color-carolina-800: #265776;
+  --color-carolina-900: #1d4258;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s ease-out forwards;
+}

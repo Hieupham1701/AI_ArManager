@@ -1,36 +1,30 @@
-import os
+"""
+Auth router for authentication endpoints.
+
+Endpoints:
+  POST /auth/signup
+  POST /auth/login
+  POST /auth/refresh
+  POST /auth/logout
+  GET /auth/profile
+  PUT /auth/profile
+  POST /auth/forgot-password
+  POST /auth/reset-password
+  POST /auth/change-password
+"""
 from typing import Optional
 
 import httpx
-from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from supabase import Client, create_client
 
-load_dotenv()
-
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
-
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Need to set SUPABASE_URL and SUPABASE_KEY in .env file")
+from config import SUPABASE_URL, SUPABASE_KEY, SERVICE_ROLE_KEY, FRONTEND_URL
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-app = FastAPI(title="AI AR Manager - Auth API")
-
-# Allow frontend to call APIs
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
+supabase_admin: Client = create_client(SUPABASE_URL, SERVICE_ROLE_KEY) if SERVICE_ROLE_KEY else None
+router = APIRouter(tags=["Auth"])
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
@@ -116,8 +110,9 @@ def get_current_user(credentials: Optional[HTTPAuthorizationCredentials] = Depen
 # ---------------------------------------------------------------------------
 # Signup -> Supabase Auth creates user -> profile row (optional) -> verify email
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/signup", status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_201_CREATED)
 def signup_user(payload: SignupRequest):
+    """Register a new user."""
     try:
         response = supabase.auth.sign_up({
             "email": payload.business_email,
@@ -137,14 +132,16 @@ def signup_user(payload: SignupRequest):
 
     # Best-effort: create a matching row in `users`. Non-fatal if it fails
     # (e.g. table doesn't exist yet, or RLS blocks it until email is verified).
+    # Use service role client to bypass RLS if available.
     try:
-        supabase.table("users").upsert({
+        db_client = supabase_admin if supabase_admin else supabase
+        db_client.table("users").upsert({
             "id": response.user.id,
             "email": payload.business_email,
             "business_name": payload.business_name,
         }).execute()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Failed to create user row")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail = str(e))
 
     return {
         "message": "Signup successful. Please check your email to verify your account.",
@@ -155,8 +152,9 @@ def signup_user(payload: SignupRequest):
 # ---------------------------------------------------------------------------
 # Login -> access token + refresh token
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/login")
+@router.post("/login")
 def login_user(payload: LoginRequest):
+    """Login user and return access token."""
     try:
         response = supabase.auth.sign_in_with_password({
             "email": payload.business_email,
@@ -180,8 +178,9 @@ def login_user(payload: LoginRequest):
 # ---------------------------------------------------------------------------
 # Refresh token -> new access token
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/refresh")
+@router.post("/refresh")
 def refresh_token(payload: RefreshRequest):
+    """Refresh access token using refresh token."""
     try:
         response = supabase.auth.refresh_session(payload.refresh_token)
     except Exception as e:
@@ -200,10 +199,9 @@ def refresh_token(payload: RefreshRequest):
 # ---------------------------------------------------------------------------
 # Logout
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/logout")
+@router.post("/logout")
 def logout_user(current: dict = Depends(get_current_user)):
-    # supabase.auth.sign_out() has no way to target another user's token, so
-    # revoke it directly via the Auth REST API using the caller's own token.
+    """Logout user and revoke token."""
     response = httpx.post(
         f"{SUPABASE_URL}/auth/v1/logout",
         headers={
@@ -221,8 +219,9 @@ def logout_user(current: dict = Depends(get_current_user)):
 # ---------------------------------------------------------------------------
 # Protected: profile
 # ---------------------------------------------------------------------------
-@app.get("/api/auth/profile")
+@router.get("/profile")
 def get_profile(current: dict = Depends(get_current_user)):
+    """Get user profile."""
     user = current["user"]
 
     profile_row = None
@@ -235,8 +234,9 @@ def get_profile(current: dict = Depends(get_current_user)):
     return {"user": user, "profile": profile_row}
 
 
-@app.put("/api/auth/profile")
+@router.put("/profile")
 def update_profile(payload: UpdateProfileRequest, current: dict = Depends(get_current_user)):
+    """Update user profile."""
     user = current["user"]
     updates = payload.model_dump(exclude_none=True)
     if not updates:
@@ -253,8 +253,9 @@ def update_profile(payload: UpdateProfileRequest, current: dict = Depends(get_cu
 # ---------------------------------------------------------------------------
 # Forgot password -> email with reset link
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/forgot-password")
+@router.post("/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest):
+    """Send password reset email."""
     try:
         supabase.auth.reset_password_email(
             payload.business_email,
@@ -272,8 +273,9 @@ def forgot_password(payload: ForgotPasswordRequest):
 # ---------------------------------------------------------------------------
 # Reset password (from the emailed recovery link's access token)
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/reset-password")
+@router.post("/reset-password")
 def reset_password(payload: ResetPasswordRequest):
+    """Reset password with recovery token."""
     try:
         user_response = supabase.auth.get_user(payload.access_token)
     except Exception:
@@ -290,8 +292,9 @@ def reset_password(payload: ResetPasswordRequest):
 # ---------------------------------------------------------------------------
 # Change password (authenticated user, must confirm current password)
 # ---------------------------------------------------------------------------
-@app.post("/api/auth/change-password")
+@router.post("/change-password")
 def change_password(payload: ChangePasswordRequest, current: dict = Depends(get_current_user)):
+    """Change password for authenticated user."""
     business_email = current["user"].email
     try:
         supabase.auth.sign_in_with_password({"email": business_email, "password": payload.current_password})
