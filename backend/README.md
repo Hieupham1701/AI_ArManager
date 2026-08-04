@@ -1,19 +1,45 @@
 # AI Invoice Management Agent — Backend
 
-## 1. Files
+## 1. Architecture
 
-| File | Purpose |
-|------|---------|
-| `app/main.py` | FastAPI entry point, CORS, router registration, health probe |
-| `app/schemas.py` | **Shared Pydantic models & enums** — the API contract every frontend type must match |
-| `app/models.py` | Placeholder for future SQLAlchemy ORM models |
-| `app/routers/invoices.py` | Invoice resource endpoints (`GET` only) |
-| `app/routers/strategy.py` | Strategy orchestration endpoints (`POST`) |
-| `app/services/strategy_service.py` | Deterministic engine: days overdue, status, risk, tier, next action |
-| `app/services/reminder_service.py` | Deterministic reminder preview generator |
-| `requirements.txt` | Python dependencies |
+```
+backend/
+├── main.py ⭐              # Clean entry point — imports & registers routers
+├── config.py              # Shared config (Supabase, env vars)
+├── api/                   # All routers as modules
+│   ├── auth.py            # Auth router (signup, login, profile, etc.)
+│   ├── invoices.py        # Invoice endpoints
+│   └── strategy.py        # Strategy endpoints
+├── app/
+│   ├── models/            # Database models (future SQLAlchemy)
+│   ├── schemas/           # Pydantic schemas
+│   └── services/          # Business logic
+└── requirements.txt
+```
 
-## 2. API Endpoints
+## 2. Running the Backend
+
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn main:app --reload --host 127.0.0.1 --port 8000
+```
+
+## 3. API Endpoints
+
+### Auth (`/api/auth`)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/signup` | Register new user |
+| `POST` | `/login` | Authenticate user |
+| `POST` | `/refresh` | Refresh access token |
+| `POST` | `/logout` | Logout user |
+| `GET` | `/profile` | Get user profile (protected) |
+| `PUT` | `/profile` | Update user profile (protected) |
+| `POST` | `/forgot-password` | Send password reset email |
+| `POST` | `/reset-password` | Reset password with token |
+| `POST` | `/change-password` | Change password (authenticated) |
 
 ### Invoices (`/api/v1/invoices/{invoice_id}`)
 
@@ -42,12 +68,7 @@
 
 ---
 
-## 3. API Contracts (Schemas)
-
-These Pydantic models in `app/schemas.py` are the **source of truth**.  
-The frontend TypeScript types (`frontend/src/types/invoice.ts`) are hand-aligned to match them.
-
-### Enums
+## 4. API Contracts (Schemas)
 
 | Enum | Values |
 |------|--------|

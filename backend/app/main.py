@@ -8,7 +8,7 @@ independently of database and AI integrations.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import invoices, strategy
+from api import invoices, strategy
 
 app = FastAPI(
     title="AI Invoice Management Agent — Strategy Engine",
