@@ -20,7 +20,7 @@
 
 ## 🎯 Project Overview
 
-**Ola_Team4** is a full-stack application designed to help businesses automate and optimize their accounts receivable processes. It features:
+**AI Account Receivable Manager** is a full-stack application designed to help businesses automate and optimize their accounts receivable processes. It features:
 
 - **Intelligent Invoice Management** — AI-driven prioritization of overdue invoices
 - **Smart Collection Strategies** — Deterministic heuristics for optimal follow-up timing and methods
