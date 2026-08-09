@@ -5,7 +5,8 @@ import {
 	getToneMeta,
 	getToneTextColor,
 	getCompanyInitial,
-	formatClientDate
+	formatClientDate,
+	formatClientDateTime
 } from '../../lib/clients/helpers'
 
 
@@ -96,7 +97,11 @@ export function ClientCard({ client, onEdit, onDelete, onAddInvoice }: ClientCar
 
 			<div className="flex items-center justify-between pt-2 border-t border-slate-100 mt-0.5">
 				<span className="text-[12px] text-slate-400">
-					{client.createdAt ? `Added ${formatClientDate(client.createdAt)}` : ''}
+					{client.updatedAt
+						? `Updated ${formatClientDateTime(client.updatedAt)}`
+						: client.createdAt
+							? `Added ${formatClientDate(client.createdAt)}`
+							: ''}
 				</span>
 
 				<div className="flex items-center gap-2">

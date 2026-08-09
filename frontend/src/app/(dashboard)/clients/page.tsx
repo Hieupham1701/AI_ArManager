@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import {
   Client,
   ClientFormData,
@@ -8,14 +8,14 @@ import {
   ClientFilterState,
   DEFAULT_FORM_DATA
 } from '../../../lib/clients/types'
-import { initialClients } from '../../../lib/clients/mockData'
 import { validateClientForm, filterClients, sanitizeFormData } from '../../../lib/clients/helpers'
+import { createClient, deleteClient, listClients, updateClient } from '../../../lib/clients/api'
 import { AddClientForm } from '../../../components/clients/ClientForm'
 import { ClientList } from '../../../components/clients/ClientList'
 
 export default function ClientsPage() {
   // State management for clients, form
-  const [clients, setClients] = useState<Client[]>(initialClients)
+  const [clients, setClients] = useState<Client[]>([])
   const [form, setForm] = useState<ClientFormData>(DEFAULT_FORM_DATA)
   const [editingId, setEditingId] = useState<string | number | null>(null)
 
@@ -32,8 +32,31 @@ export default function ClientsPage() {
     tone: 'all',
   })
 
-  const isEditMode = Boolean(editingId)
+  // Keep the form in edit mode while a client ID is selected
+  const isEditMode = editingId !== null
 
+  useEffect(() => {
+    let isMounted = true
+    setIsLoadingClients(true)
+
+    listClients()
+      .then(loadedClients => {
+        if (isMounted) setClients(loadedClients)
+      })
+      .catch(err => {
+        if (isMounted) setServerError(err instanceof Error ? err.message : 'Failed to load clients.')
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingClients(false)
+      })
+
+    // Prevent state updates if the component unmounts before the request finishes
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  // Update form values and clear validation errors for edited fields
   const handleFormChange = (updates: Partial<ClientFormData>) => {
     setForm(prev => ({ ...prev, ...updates }))
     setServerError(null)
@@ -48,6 +71,7 @@ export default function ClientsPage() {
   }
 
 
+  // Populate the form with the selected client's data for editing
   const handleEditClient = (client: Client) => {
     setEditingId(client.id)
     setForm({
@@ -66,6 +90,7 @@ export default function ClientsPage() {
   }
 
 
+  // Validate, sanitize, and submit the form data to create or update a client
   const handleSaveClient = async () => {
     const validationErrors = validateClientForm(form)
     if (Object.keys(validationErrors).length > 0) {
@@ -79,35 +104,16 @@ export default function ClientsPage() {
     setServerError(null)
 
     try {
-      if (isEditMode && editingId) {
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        setClients(prev =>
-          prev.map(c => {
-            if (c.id === editingId) {
-              return {
-                ...c,
-                ...cleanPayload,
-                updatedAt: new Date().toISOString(),
-              }
-            }
-            return c
-          })
-        )
+      if (isEditMode && editingId !== null) {
+        const updatedClient = await updateClient(editingId, cleanPayload)
+        setClients(prev => prev.map(client => client.id === editingId ? updatedClient : client))
       } else {
-        // Create new client
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        const createdClientFromApi: Client = {
-          id: `db_id_${Math.random().toString(36).substring(2, 9)}`,
-          ...cleanPayload,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        }
-
+        const createdClientFromApi = await createClient(cleanPayload)
         setClients(prev => [createdClientFromApi, ...prev])
       }
 
+
+      // Reset form and editing state after successful save
       setForm(DEFAULT_FORM_DATA)
       setEditingId(null)
       setErrors({})
@@ -119,6 +125,7 @@ export default function ClientsPage() {
   }
 
 
+  // Reset the form and editing state when the user cancels editing
   const handleCancel = () => {
     setForm(DEFAULT_FORM_DATA)
     setEditingId(null)
@@ -126,9 +133,11 @@ export default function ClientsPage() {
     setServerError(null)
   }
 
+  // Confirm deletion and remove the client from the list if successful
   const handleDeleteClient = async (id: string | number) => {
     if (confirm('Are you sure you want to delete this client?')) {
       try {
+        await deleteClient(id)
         setClients(prev => prev.filter(c => c.id !== id))
         if (editingId === id) {
           handleCancel()
@@ -140,6 +149,7 @@ export default function ClientsPage() {
   }
 
 
+  // Memoize the filtered clients to avoid unnecessary recalculations on every render
   const filteredClients = useMemo(() => {
     return filterClients(clients, filters)
   }, [clients, filters])

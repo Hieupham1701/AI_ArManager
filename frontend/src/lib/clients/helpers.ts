@@ -65,6 +65,22 @@ export const formatClientDate = (dateString?: string): string => {
 	}
 }
 
+export const formatClientDateTime = (dateString?: string): string => {
+	if (!dateString) return 'N/A'
+	try {
+		const date = new Date(dateString)
+		return new Intl.DateTimeFormat('en-US', {
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit',
+		}).format(date)
+	} catch {
+		return 'Invalid Date'
+	}
+}
+
 export const sanitizeFormData = (data: ClientFormData): ClientFormData => {
 	return {
 		...data,
