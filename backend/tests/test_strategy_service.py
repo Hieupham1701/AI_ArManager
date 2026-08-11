@@ -27,6 +27,21 @@ from app.services.strategy_service import (
     Tone,
     Channel,
 )
+from app.services import strategy_service
+
+# ---------------------------------------------------------------------------
+# Ensure a clean in‑memory state before each test (the service stores data in
+# module‑level dictionaries). This fixture runs automatically for every test in
+# this file.
+# ---------------------------------------------------------------------------
+
+import pytest
+
+@pytest.fixture(autouse=True)
+def _clear_in_memory_state():
+    """Reset the mock stores between tests to avoid cross‑test contamination."""
+    strategy_service._APPROVALS.clear()
+    strategy_service._DEBTOR_RESPONSES.clear()
 
 
 def _base_payload(days_overdue: int, amount: float = 1000.0):
