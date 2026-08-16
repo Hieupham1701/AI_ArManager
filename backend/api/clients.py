@@ -1,7 +1,7 @@
 import re
 import logging
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -146,7 +146,8 @@ def list_clients(current: dict = Depends(get_current_user)) -> list[ClientRespon
             detail="Failed to load clients",
         ) from exc
 
-    return [_to_client_response(row) for row in (result.data or [])]
+    rows = cast(list[dict[str, Any]], result.data or [])
+    return [_to_client_response(row) for row in rows]
 
 
 def _client_row(payload: ClientPayload, owner_id: str, include_owner: bool = False) -> dict:
@@ -188,7 +189,8 @@ def create_client(payload: ClientPayload, current: dict = Depends(get_current_us
 
     if not result.data:
         raise HTTPException(status_code=400, detail="Failed to create client")
-    return _to_client_response(result.data[0])
+    row = cast(dict[str, Any], result.data[0])
+    return _to_client_response(row)
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)
@@ -215,7 +217,8 @@ def update_client(
 
     if not result.data:
         raise HTTPException(status_code=404, detail="Client not found")
-    return _to_client_response(result.data[0])
+    row = cast(dict[str, Any], result.data[0])
+    return _to_client_response(row)
 
 
 @router.delete("/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
