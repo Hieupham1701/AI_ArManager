@@ -1,16 +1,26 @@
-import { Fragment } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   ACCENT,
   filterByOverdue,
   fmt,
   groupInvoices,
   GroupBy,
-  INVOICES,
   InvoiceStatus,
   OD_FILTERS,
   OverdueFilter,
   statusCfg,
 } from "../../lib/analytics/data";
+import { fetchAnalyticsInvoices, QueueInvoice } from "../../lib/api";
+
+interface Invoice {
+  id: string;
+  client: string;
+  invoiceId: string;
+  amount: number;
+  dueDate: string;
+  daysOverdue: number;
+  status: InvoiceStatus;
+}
 
 interface InvoiceQueueTableProps {
   overdueFilter: OverdueFilter;
@@ -23,8 +33,48 @@ export default function InvoiceQueueTable({
   setOverdueFilter,
   groupBy,
 }: InvoiceQueueTableProps) {
-  const filtered = filterByOverdue(INVOICES, overdueFilter);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadInvoices() {
+      try {
+        setLoading(true);
+        const data = await fetchAnalyticsInvoices();
+        
+        // Transform API data to Invoice format
+        const transformed: Invoice[] = data.map((item: QueueInvoice) => ({
+          id: item.id || String(Math.random()),
+          client: item.client || 'Unknown',
+          invoiceId: item.invoiceId || item.id || 'N/A',
+          amount: Number(item.amount) || 0,
+          dueDate: item.dueDate || 'N/A',
+          daysOverdue: Number(item.daysOverdue) || 0,
+          status: (item.status?.toLowerCase() as InvoiceStatus) || 'in_progress',
+        }));
+        
+        setInvoices(transformed);
+      } catch (error) {
+        console.error('Failed to load invoices:', error);
+        setInvoices([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadInvoices();
+  }, []);
+
+  const filtered = filterByOverdue(invoices, overdueFilter);
   const groups = groupInvoices(filtered, groupBy);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <p className="text-sm text-slate-500">Loading invoices...</p>
+      </div>
+    );
+  }
 
   return (
     <div>

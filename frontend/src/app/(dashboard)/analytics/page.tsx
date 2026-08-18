@@ -6,24 +6,44 @@ import ChartCard from "../../../components/ui/ChartCard";
 import KPICard from "../../../components/ui/KPICard";
 import InvoiceQueueTable from "../../../components/analytics/InvoiceQueueTable";
 import InvoiceAnalyticsPanel from "../../../components/analytics/InvoiceAnalyticsPanel";
-import StreamStatusStrip from "../../../components/analytics/StreamStatusStrip";
-import TelephonyPanel from "../../../components/analytics/TelephonyPanel";
 import CollectionTrendChart from "../../../components/charts/CollectionTrendChart";
 import {
   ACCENT,
   fmt,
-  getPortfolioSummary,
   GroupBy,
   INVOICES,
   OverdueFilter,
 } from "../../../lib/analytics/data";
+import { fetchPortfolioSummary, fetchAnalytics } from "../../../lib/api";
+import type { PortfolioSummary } from "@/types/invoice";
 
 export default function AnalyticsPage() {
   const [overdueFilter, setOverdueFilter] = useState<OverdueFilter>("all");
   const [groupBy, setGroupBy] = useState<GroupBy>("status");
   const [currentTime, setCurrentTime] = useState<string | null>(null);
+  const [summary, setSummary] = useState<PortfolioSummary | null>(null);
+  const [totalInvoices, setTotalInvoices] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  const summary = getPortfolioSummary();
+  useEffect(() => {
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [portfolioData, analyticsData] = await Promise.all([
+          fetchPortfolioSummary(),
+          fetchAnalytics(),
+        ]);
+        setSummary(portfolioData);
+        setTotalInvoices(analyticsData.totalInvoices);
+      } catch (error) {
+        console.error("Failed to load analytics data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
 
   useEffect(() => {
     const format = () => new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
@@ -31,6 +51,22 @@ export default function AnalyticsPage() {
     const timer = setInterval(() => setCurrentTime(format()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  if (loading || !summary) {
+    return (
+      <div className="space-y-6">
+        <section>
+          <h5><b>AR Financial Metrics</b></h5>
+          <p>Accounts receivable analytics : {currentTime ?? "—"}</p>
+        </section>
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-32 rounded-lg bg-slate-100 animate-pulse" />
+          ))}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -45,7 +81,7 @@ export default function AnalyticsPage() {
         <KPICard
           label="Total Portfolio"
           value={fmt(summary.total)}
-          sub={`${INVOICES.length} active invoices`}
+          sub={`${totalInvoices} active invoices`}
           icon={DollarSign}
           iconColor="#1a2332"
           iconBg="#eef2f7"
@@ -79,10 +115,8 @@ export default function AnalyticsPage() {
         />
       </section>
 
-      <StreamStatusStrip />
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-        <TelephonyPanel />
 
         <div className="min-w-0 flex-1 space-y-6">
           <ChartCard
@@ -123,7 +157,7 @@ export default function AnalyticsPage() {
           </ChartCard>
         </div>
 
-        <InvoiceAnalyticsPanel overdueFilter={overdueFilter} setOverdueFilter={setOverdueFilter} />
+        <InvoiceAnalyticsPanel />
       </div>
     </div>
   );
