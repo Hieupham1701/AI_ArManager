@@ -11,7 +11,7 @@ from app.services.message_generator import generate_message_draft
 from app.services.message_validator import MessageValidationError, validate_outbound_message
 
 
-router = APIRouter(prefix="/api/communications", tags=["communications"])
+router = APIRouter(tags=["communications"])
 logger = logging.getLogger(__name__)
 
 

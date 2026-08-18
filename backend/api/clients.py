@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from api.auth import get_current_user, supabase
 
 
-router = APIRouter(prefix="/api/clients", tags=["clients"])
+router = APIRouter(tags=["clients"])
 logger = logging.getLogger(__name__)
 
 ReminderChannel = Literal["email", "sms", "phone"]

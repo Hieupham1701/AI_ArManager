@@ -69,6 +69,16 @@ class Priority(str, Enum):
     HIGH = "high"
 
 
+class DebtorIntentType(str, Enum):
+    """Classification of debtor's response intent."""
+    PROMISE_TO_PAY = "promise_to_pay"
+    BILLING_DISPUTE = "billing_dispute"
+    FINANCIAL_HARDSHIP = "financial_hardship"
+    PARTIAL_PAYMENT = "partial_payment"
+    NO_RESPONSE = "no_response"
+    REQUEST_EXTENSION = "request_extension"
+
+
 # ---------------------------------------------------------------------------
 # Data Models
 # ---------------------------------------------------------------------------
@@ -192,3 +202,68 @@ class GenerateReminderRequest(BaseModel):
 class GenerateReminderResponse(BaseModel):
     """Payload returned by POST /api/v1/strategy/generate-reminder."""
     reminder: ReminderPreview
+
+class InvoiceStatusAggregate(BaseModel):
+    """Aggregate metrics for a specific invoice status."""
+    status: InvoiceStatus
+    totalAmount: float
+    count: int
+    averageAmount: float
+class AnalyticsResponse(BaseModel):
+    """Aggregated invoice metrics grouped by status."""
+    byStatus: List[InvoiceStatusAggregate]
+    totalAmount: float
+    totalInvoices: int
+    generatedAt: str
+
+
+class CollectionTrendData(BaseModel):
+    """Collection trend data for a single month."""
+    month: str  # Format: "YYYY-MM"
+    collected: float  # Total amount paid in this month
+    outstanding: float  # Total unpaid invoice amounts (not including paid)
+
+
+class CollectionTrendResponse(BaseModel):
+    """Collection trend data grouped by month (6 months)."""
+    trend: List[CollectionTrendData]
+    generatedAt: str
+
+
+# ---------------------------------------------------------------------------
+# Debtor Response Classification Models
+# ---------------------------------------------------------------------------
+
+class DebtorResponseClassification(BaseModel):
+    """Classification result from Gemini analysis of debtor response."""
+    intent: DebtorIntentType
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score 0-1")
+    extracted_date: Optional[str] = None  # ISO format or natural language date
+    reasoning: str  # Brief explanation of why this intent was chosen
+
+
+class DebtorResponseRequest(BaseModel):
+    """Payload accepted by POST /api/v1/debtor-response/submit."""
+    payment_id: str  # Links to payment record
+    token: str  # Token-based auth (no account required)
+    response_text: str
+    channel: str = "text"  # "text" or "voice"
+
+
+class SuggestedNextActionResponse(BaseModel):
+    """Suggested next action based on debtor's response - for owner approval."""
+    classification: DebtorResponseClassification
+    suggested_action: str
+    suggested_priority: Priority
+    reasoning: str
+    requires_approval: bool = True  # Owner must approve before applying
+
+
+class DebtorResponseSubmitResponse(BaseModel):
+    """Payload returned by POST /api/v1/debtor-response/submit."""
+    success: bool
+    payment_id: str
+    classification: DebtorResponseClassification
+    suggested_strategy: SuggestedNextActionResponse
+    message: str
+

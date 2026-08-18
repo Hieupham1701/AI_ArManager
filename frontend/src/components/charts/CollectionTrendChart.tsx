@@ -1,10 +1,33 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { EChartsOption } from "echarts";
 import EChart from "./EChart";
-import { fmt, TREND } from "../../lib/analytics/data";
+import { fmt } from "../../lib/analytics/data";
+import { fetchCollectionTrend } from "../../lib/api";
+import type { CollectionTrendData } from "@/types/invoice";
 
 export default function CollectionTrendChart() {
+  const [data, setData] = useState<CollectionTrendData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadTrendData() {
+      try {
+        setLoading(true);
+        const response = await fetchCollectionTrend();
+        setData(response.trend);
+      } catch (error) {
+        console.error("Failed to load collection trend:", error);
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadTrendData();
+  }, []);
+
   const option: EChartsOption = {
     color: ["#059669", "#4b9cd3"],
     grid: { left: 50, right: 20, top: 36, bottom: 32 },
@@ -20,7 +43,7 @@ export default function CollectionTrendChart() {
     },
     xAxis: {
       type: "category",
-      data: TREND.map((t) => t.month),
+      data: data.map((t) => t.month),
       boundaryGap: false,
       axisLine: { lineStyle: { color: "#cbd5e1" } },
       axisLabel: { color: "#64748b", fontSize: 11 },
@@ -38,7 +61,7 @@ export default function CollectionTrendChart() {
       {
         name: "Collected",
         type: "line",
-        data: TREND.map((t) => t.Collected),
+        data: data.map((t) => t.collected),
         smooth: true,
         symbolSize: 6,
         lineStyle: { width: 2 },
@@ -59,7 +82,7 @@ export default function CollectionTrendChart() {
       {
         name: "Outstanding",
         type: "line",
-        data: TREND.map((t) => t.Outstanding),
+        data: data.map((t) => t.outstanding),
         smooth: true,
         symbolSize: 6,
         lineStyle: { width: 2 },

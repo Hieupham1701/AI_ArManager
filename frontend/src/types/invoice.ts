@@ -80,3 +80,39 @@ export interface AIInsight {
   recommendedAction: string;
   optimalContactTime?: string;
 }
+
+// Analytics
+export interface InvoiceStatusAggregate {
+  status: InvoiceStatus;
+  totalAmount: number;
+  count: number;
+  averageAmount: number;
+}
+
+export interface AnalyticsResponse {
+  byStatus: InvoiceStatusAggregate[];
+  totalAmount: number;
+  totalInvoices: number;
+  generatedAt: string;
+}
+
+// Portfolio Summary
+export interface PortfolioSummary {
+  total: number;
+  collected: number;
+  outstanding: number;
+  atRisk: number;
+  collectionRate: number;
+}
+
+// Collection Trend
+export interface CollectionTrendData {
+  month: string; // YYYY-MM format
+  collected: number;
+  outstanding: number;
+}
+
+export interface CollectionTrendResponse {
+  trend: CollectionTrendData[];
+  generatedAt: string;
+}
