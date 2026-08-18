@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import FRONTEND_URL
-from api import auth, invoices, strategy
+from api import auth, communications, invoices, strategy, webhooks
+from api.clients import router as clients_router
+
 
 app = FastAPI(
     title="AI Invoice Management Agent",
@@ -30,6 +32,9 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth")
 app.include_router(invoices.router, prefix="/api/v1")
 app.include_router(strategy.router, prefix="/api/v1")
+app.include_router(clients_router)
+app.include_router(communications.router)
+app.include_router(webhooks.router)
 
 
 # ---------------------------------------------------------------------------

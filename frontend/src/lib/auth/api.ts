@@ -33,7 +33,7 @@ export interface MessageResponse {
 
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api").replace(/\/$/, "");
 
-async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -60,7 +60,7 @@ async function apiRequest<T>(path: string, options: RequestInit = {}): Promise<T
   return data as T;
 }
 
-function withAuth(accessToken: string, headers: HeadersInit = {}): HeadersInit {
+export function withAuth(accessToken: string, headers: HeadersInit = {}): HeadersInit {
   return { ...headers, Authorization: `Bearer ${accessToken}` };
 }
 

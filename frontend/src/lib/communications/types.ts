@@ -7,8 +7,9 @@ export type Channel = "email" | "sms";
 export type Direction = "in" | "out";
 export type Intent = "dispute" | "promise_to_pay" | "invoice_request" | "other";
 export type SenderType = "client" | "AI" | "human";
-export type OutStatus = "sent" | "delivered" | "failed";
+export type OutStatus = "pending" | "sent" | "delivered" | "failed";
 export type ComplianceState = "idle" | "verifying" | "verified" | "flagged";
+export type Tone = "friendly" | "professional" | "firm";
 
 
 // interface types 
@@ -21,6 +22,7 @@ export interface Client {
 	invoice: string;
 	amount: number;
 	daysOverdue: number;
+	invoiceId?: string;
 }
 
 export interface Message {
@@ -40,4 +42,20 @@ export interface Message {
 	isRead?: boolean;
 	canReply?: boolean;
 	complianceStatus?: ComplianceState;
+}
+
+export interface CommunicationDraft {
+	channel: Channel;
+	tone: string;
+	action: string;
+	subject?: string;
+	body: string;
+	provider: string;
+	isCompliant: boolean;
+	violations: string[];
+}
+
+export interface CommunicationBootstrap {
+	clients: Client[];
+	messages: Message[];
 }
