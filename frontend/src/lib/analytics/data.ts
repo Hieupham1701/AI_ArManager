@@ -76,6 +76,22 @@ export function statusCfg(status: InvoiceStatus): StatusStyle {
   return STATUS_STYLES[status];
 }
 
+/**
+ * Convert API status format to internal status format.
+ * API returns: "Critical", "Escalated", "Overdue", "In Progress", "Paid"
+ * Internal expects: "critical", "escalated", "overdue", "in_progress", "completed"
+ */
+export function normalizeApiStatus(apiStatus: string): InvoiceStatus {
+  const statusMap: Record<string, InvoiceStatus> = {
+    "Critical": "critical",
+    "Escalated": "escalated",
+    "Overdue": "overdue",
+    "In Progress": "in_progress",
+    "Paid": "completed",
+  };
+  return statusMap[apiStatus] || "in_progress";
+}
+
 export function fmt(n: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -109,30 +125,4 @@ export function groupInvoices(invoices: Invoice[], by: GroupBy): [string, Invoic
   }
   const clients = [...new Set(invoices.map((i) => i.client))];
   return clients.map((client) => [client, invoices.filter((i) => i.client === client)]);
-}
-
-export interface PortfolioSummary {
-  total: number;
-  collected: number;
-  outstanding: number;
-  atRisk: number;
-  collectionRate: number;
-  byStatus: Record<InvoiceStatus, number>;
-}
-
-export function getPortfolioSummary(): PortfolioSummary {
-  const total = INVOICES.reduce((sum, i) => sum + i.amount, 0);
-  const byStatus = STATUS_ORDER.reduce(
-    (acc, status) => {
-      acc[status] = INVOICES.filter((i) => i.status === status).reduce((sum, i) => sum + i.amount, 0);
-      return acc;
-    },
-    {} as Record<InvoiceStatus, number>
-  );
-  const collected = byStatus.completed;
-  const outstanding = total - collected;
-  const atRisk = byStatus.critical + byStatus.escalated;
-  const collectionRate = Math.round((collected / total) * 100);
-
-  return { total, collected, outstanding, atRisk, collectionRate, byStatus };
 }

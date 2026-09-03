@@ -4,7 +4,7 @@
 
 ```
 backend/
-├── main.py ⭐              # Clean entry point — imports & registers routers
+├── main.py                # Clean entry point — imports & registers routers
 ├── config.py              # Shared config (Supabase, env vars)
 ├── api/                   # All routers as modules
 │   ├── auth.py            # Auth router (signup, login, profile, etc.)
@@ -25,31 +25,58 @@ pip install -r requirements.txt
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+### Communication provider setup (local/demo)
+
+The `.env` file is server configuration. A project owner or deployer fills it
+once; users do not edit `.env` when sending messages from the frontend.
+
+For local testing, configure one team-owned email provider and, optionally,
+one Twilio SMS provider:
+
+```env
+# Gmail / Google Workspace example
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your-team-account@gmail.com
+SMTP_PASSWORD=your-gmail-app-password
+SMTP_FROM_EMAIL=your-team-account@gmail.com
+SMTP_USE_SSL=false
+
+# Twilio example
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+TWILIO_FROM_NUMBER=+14155550123
+```
+
+`SMTP_PASSWORD` must be an App Password for Gmail, not the normal account
+password. `TWILIO_FROM_NUMBER` must be an SMS-capable number owned by the
+Twilio account.
+
 ## 3. API Endpoints
 
 ### Auth (`/api/auth`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/signup` | Register new user |
-| `POST` | `/login` | Authenticate user |
-| `POST` | `/refresh` | Refresh access token |
-| `POST` | `/logout` | Logout user |
-| `GET` | `/profile` | Get user profile (protected) |
-| `PUT` | `/profile` | Update user profile (protected) |
-| `POST` | `/forgot-password` | Send password reset email |
-| `POST` | `/reset-password` | Reset password with token |
+| Method | Path               | Description                     |
+| ------ | ------------------ | ------------------------------- |
+| `POST` | `/signup`          | Register new user               |
+| `POST` | `/login`           | Authenticate user               |
+| `POST` | `/refresh`         | Refresh access token            |
+| `POST` | `/logout`          | Logout user                     |
+| `GET`  | `/profile`         | Get user profile (protected)    |
+| `PUT`  | `/profile`         | Update user profile (protected) |
+| `POST` | `/forgot-password` | Send password reset email       |
+| `POST` | `/reset-password`  | Reset password with token       |
 | `POST` | `/change-password` | Change password (authenticated) |
 
 ### Invoices (`/api/v1/invoices/{invoice_id}`)
 
-| Method | Path | Response Model | Description |
-|--------|------|----------------|-------------|
-| `GET` | `/detail` | `InvoiceDetail` | Full invoice summary + strategy metadata |
-| `GET` | `/timeline` | `List[CollectionStep]` | Chronological collection steps |
-| `GET` | `/communications` | `List[CommunicationLog]` | Communication history |
-| `GET` | `/contact` | `Contact` | Primary billing contact |
-| `GET` | `/reminder` | `ReminderPreview` | AI-generated reminder preview |
+| Method | Path              | Response Model           | Description                              |
+| ------ | ----------------- | ------------------------ | ---------------------------------------- |
+| `GET`  | `/detail`         | `InvoiceDetail`          | Full invoice summary + strategy metadata |
+| `GET`  | `/timeline`       | `List[CollectionStep]`   | Chronological collection steps           |
+| `GET`  | `/communications` | `List[CommunicationLog]` | Communication history                    |
+| `GET`  | `/contact`        | `Contact`                | Primary billing contact                  |
+| `GET`  | `/reminder`       | `ReminderPreview`        | AI-generated reminder preview            |
 
 ### Strategy (`/api/v1/strategy`)
 
@@ -66,9 +93,9 @@ Communication layer (owned by **Hanh**).
 
 ### Health
 
-| Method | Path | Response |
-|--------|------|----------|
-| `GET` | `/health` | `{"status":"ok"}` |
+| Method | Path      | Response          |
+| ------ | --------- | ----------------- |
+| `GET`  | `/health` | `{"status":"ok"}` |
 
 > **Interactive docs:** `http://127.0.0.1:8000/docs` (Swagger UI)
 
@@ -76,14 +103,14 @@ Communication layer (owned by **Hanh**).
 
 ## 4. API Contracts (Schemas)
 
-| Enum | Values |
-|------|--------|
-| `InvoiceStatus` | `OVERDUE`, `IN_PROGRESS`, `ESCALATED`, `CRITICAL`, `PAID`, `PENDING` |
-| `RiskLevel` | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL` |
-| `CollectionStepStatus` | `COMPLETED`, `ACTIVE`, `PENDING` |
-| `CommunicationType` | `EMAIL`, `SMS`, `PHONE`, `INVOICE_DELIVERY` |
-| `CommunicationStatus` | `DELIVERED`, `SENT`, `FAILED`, `PENDING` |
-| `ReminderStatus` | `GENERATED`, `PENDING_APPROVAL`, `SENT` |
+| Enum                   | Values                                                               |
+| ---------------------- | -------------------------------------------------------------------- |
+| `InvoiceStatus`        | `OVERDUE`, `IN_PROGRESS`, `ESCALATED`, `CRITICAL`, `PAID`, `PENDING` |
+| `RiskLevel`            | `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`                                  |
+| `CollectionStepStatus` | `COMPLETED`, `ACTIVE`, `PENDING`                                     |
+| `CommunicationType`    | `EMAIL`, `SMS`, `PHONE`, `INVOICE_DELIVERY`                          |
+| `CommunicationStatus`  | `DELIVERED`, `SENT`, `FAILED`, `PENDING`                             |
+| `ReminderStatus`       | `GENERATED`, `PENDING_APPROVAL`, `SENT`                              |
 
 ### Key Models
 
@@ -136,6 +163,15 @@ All deterministic heuristics live in `backend/app/services/strategy_service.py`.
 days, determines the escalation tier, and builds a **full strategy recommendation** (`StrategyResult`).
 
 ### 4.1 `StrategyResult` contract
+
+| Days Overdue        | Escalation Tier | Invoice Status | Risk Level | Next Action                                  |
+| ------------------- | --------------- | -------------- | ---------- | -------------------------------------------- |
+| ≤ 0                 | 1               | `PENDING`      | `LOW`      | Awaiting due date                            |
+| ≤ 7                 | 2               | `OVERDUE`      | `LOW`      | Friendly Email                               |
+| ≤ 14                | 3               | `IN_PROGRESS`  | `MEDIUM`   | Reminder SMS                                 |
+| ≤ 30                | 4               | `ESCALATED`    | `HIGH`     | Phone Call → Escalation Email → Final Notice |
+| > 30, amount > $50k | 5               | `CRITICAL`     | `CRITICAL` | Collections Referral                         |
+| > 30, amount ≤ $50k | 5               | `ESCALATED`    | `HIGH`     | Collections Referral                         |
 
 ```json
 {
@@ -244,15 +280,15 @@ by the strategy engine when the intent is `promise_to_pay`.
 
 Everything is in-memory. No database is required to run the backend.
 
-| Variable | Value |
-|----------|-------|
-| Mock invoice ID | `INV-2024-0847` |
-| Mock client | `Northgate Medical Group` |
-| Mock amount | `$24,750.00` |
-| Mock due date | `2026-06-15` (7 days overdue against reference) |
-| Collection timeline | 6 steps (0 → 30 days) |
-| Communications | 3 entries (delivery, email, SMS) |
-| Contact | Sarah Mitchell, Billing Manager, 78 % response rate |
+| Variable            | Value                                               |
+| ------------------- | --------------------------------------------------- |
+| Mock invoice ID     | `INV-2024-0847`                                     |
+| Mock client         | `Northgate Medical Group`                           |
+| Mock amount         | `$24,750.00`                                        |
+| Mock due date       | `2026-06-15` (7 days overdue against reference)     |
+| Collection timeline | 6 steps (0 → 30 days)                               |
+| Communications      | 3 entries (delivery, email, SMS)                    |
+| Contact             | Sarah Mitchell, Billing Manager, 78 % response rate |
 
 ---
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Mail, MessageSquare, Send, Sparkles, Paperclip, X, ShieldCheck, Loader2, AlertTriangle } from "lucide-react";
-import { Message, Channel, Client, ACCENT } from "../../lib/communications/types";
+import { CommunicationDraft, Message, Channel, Client, ACCENT } from "../../lib/communications/types";
 
 interface MessageComposerProps {
 	client?: Client;
@@ -11,6 +11,10 @@ interface MessageComposerProps {
 	recipientPhone?: string;
 	onCancelReply?: () => void;
 	onSendMessage?: (data: { channel: Channel; subject?: string; body: string }) => void;
+	onGenerateDraft?: (data: {
+		channel: Channel;
+		replyTo?: { sender?: string; body?: string; intent?: string };
+	}) => Promise<CommunicationDraft>;
 }
 
 export function MessageComposer({
@@ -20,11 +24,14 @@ export function MessageComposer({
 	recipientPhone,
 	onCancelReply,
 	onSendMessage,
+	onGenerateDraft,
 }: MessageComposerProps) {
 	const [channel, setChannel] = useState<Channel>("email");
 	const [subject, setSubject] = useState("");
 	const [body, setBody] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [draftError, setDraftError] = useState<string | null>(null);
+	const [draftProvider, setDraftProvider] = useState<string | null>(null);
 
 	// auto-fill subject when replying to an email
 	useEffect(() => {
@@ -41,49 +48,26 @@ export function MessageComposer({
 		}
 	}, [replyingTo]);
 
-	// AI Generate Reply Draft (Mocked for now, will integrate with Gemini API later)
 	const handleGenerateAIDraft = async () => {
+		if (!onGenerateDraft) return;
+
 		setIsGenerating(true);
-
-		// Mock AI Draft Generation Logic
-		const recipientFirstName = replyingTo?.sender?.split(" ")[0] || client?.name?.split(" ")[0] || "there";
-		const invoiceRef = client?.invoice ? `invoice ${client.invoice}` : "your invoice";
-
-		// TODO: Integrate with Gemini API to generate AI draft based on context
-		setTimeout(() => {
-			if (channel === "sms") {
-				// Short and concise draft for SMS channel
-				if (replyingTo?.intent === "invoice_request") {
-					setBody(
-						`Hi ${recipientFirstName}, we've sent the requested statement for ${invoiceRef} to your email. Let us know if you need anything else!`
-					);
-				} else if (replyingTo?.intent === "dispute") {
-					setBody(
-						`Hi ${recipientFirstName}, thanks for reaching out. We are reviewing the details for ${invoiceRef} and will update you shortly.`
-					);
-				} else {
-					setBody(
-						`Hi ${recipientFirstName}, thank you for the update regarding ${invoiceRef}. We've noted this in our system.`
-					);
-				}
-			} else {
-				// Formal draft for Email channel
-				if (replyingTo?.intent === "invoice_request") {
-					setBody(
-						`Hi ${recipientFirstName},\n\nAttached is the requested statement for ${invoiceRef}. Please let us know if you need any further information to process payment.\n\nBest regards,\nAccounts Receivable Team`
-					);
-				} else if (replyingTo?.intent === "dispute") {
-					setBody(
-						`Hi ${recipientFirstName},\n\nThank you for bringing this to our attention regarding ${invoiceRef}. We are reviewing the line items with our team and will follow up shortly.\n\nBest regards,\nAccounts Receivable Team`
-					);
-				} else {
-					setBody(
-						`Hi ${recipientFirstName},\n\nThank you for the update regarding ${invoiceRef}. We have recorded your notes in our system.\n\nBest regards,\nAccounts Receivable Team`
-					);
-				}
-			}
+		setDraftError(null);
+		try {
+			const draft = await onGenerateDraft({
+				channel,
+				replyTo: replyingTo
+					? { sender: replyingTo.sender, body: replyingTo.body, intent: replyingTo.intent }
+					: undefined,
+			});
+			setSubject(draft.subject || "");
+			setBody(draft.body);
+			setDraftProvider(draft.provider);
+		} catch (error) {
+			setDraftError(error instanceof Error ? error.message : "Failed to generate draft");
+		} finally {
 			setIsGenerating(false);
-		}, 600);
+		}
 	};
 
 	// mock tone violation detection
@@ -222,14 +206,19 @@ export function MessageComposer({
 						{isGenerating ? (
 							<div className="flex items-center gap-1.5 text-[11px] text-amber-600 animate-pulse">
 								<Loader2 className="w-3.5 h-3.5 animate-spin" />
-								<span>Verifying compliance with Gemini...</span>
+								<span>Generating draft...</span>
+							</div>
+						) : draftError ? (
+							<div className="flex items-center gap-1.5 text-[11px] text-rose-600">
+								<AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+								<span>{draftError}</span>
 							</div>
 						) : isToneFlagged ? (
 							/* Trạng thái 1: Flagged / Cảnh báo Tone không đạt */
 							<div className="flex items-center gap-1.5 text-[11px]">
 								<AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
 								<span className="font-semibold text-rose-600">
-									Gemini Flagged: Non-Compliant Tone
+									Message Flagged: Non-Compliant Tone
 								</span>
 								<span className="text-slate-400 font-normal">
 									- please revise before sending
@@ -240,7 +229,7 @@ export function MessageComposer({
 							<div className="flex items-center gap-1.5 text-[11px]">
 								<ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
 								<span className="font-semibold text-emerald-700">
-									Gemini Tone & Compliance Verified
+									{draftProvider === "local" ? "Local Draft Ready" : "Tone & Compliance Verified"}
 								</span>
 								<span className="text-slate-400 font-normal">
 									- ready to send

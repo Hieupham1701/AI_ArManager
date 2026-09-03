@@ -6,6 +6,11 @@ import {
   InvoiceDetail,
   NextAction,
   ReminderPreview,
+  AnalyticsResponse,
+  InvoiceStatusAggregate,
+  PortfolioSummary,
+  CollectionTrendResponse,
+  CollectionTrendData,
 } from '@/types/invoice';
 
 const API_BASE_URL =
@@ -484,6 +489,27 @@ function isReminderPreview(value: unknown): value is ReminderPreview {
   );
 }
 
+function isInvoiceStatusAggregate(value: unknown): value is InvoiceStatusAggregate {
+  return (
+    isObject(value) &&
+    typeof value.status === 'string' &&
+    typeof value.totalAmount === 'number' &&
+    typeof value.count === 'number' &&
+    typeof value.averageAmount === 'number'
+  );
+}
+
+function isAnalyticsResponse(value: unknown): value is AnalyticsResponse {
+  return (
+    isObject(value) &&
+    Array.isArray(value.byStatus) &&
+    value.byStatus.every((item) => isInvoiceStatusAggregate(item)) &&
+    typeof value.totalAmount === 'number' &&
+    typeof value.totalInvoices === 'number' &&
+    typeof value.generatedAt === 'string'
+  );
+}
+
 export async function fetchInvoiceDetail(id: string): Promise<InvoiceDetail> {
   const fallback = invoiceForId(id);
   return getJsonWithFallback(`/invoices/${id}/detail`, fallback, isInvoiceDetail);
@@ -523,4 +549,127 @@ export async function fetchNextAction(id: string): Promise<NextAction> {
 
 export async function fetchAIInsight(id: string): Promise<AIInsight> {
   return insightForInvoice(invoiceForId(id));
+}
+
+export async function fetchAnalytics(status?: string): Promise<AnalyticsResponse> {
+  try {
+    const endpoint = status ? `/analytics/status/${status}` : `/analytics/summary`;
+    
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Analytics API error: ${response.statusText} (${response.status})`);
+    }
+
+    const data: unknown = await response.json();
+    
+    if (!isAnalyticsResponse(data)) {
+      throw new Error('Invalid analytics response format');
+    }
+
+    return data;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Failed to fetch analytics');
+  }
+}
+
+export async function fetchPortfolioSummary(): Promise<PortfolioSummary> {
+  try {
+    const analytics = await fetchAnalytics();
+    
+    // Calculate portfolio summary from analytics data
+    const total = analytics.totalAmount;
+    const collected = analytics.byStatus.find((s) => s.status === 'Paid')?.totalAmount ?? 0;
+    const outstanding = total - collected;
+    const atRisk = (analytics.byStatus.find((s) => s.status === 'Critical')?.totalAmount ?? 0) +
+                   (analytics.byStatus.find((s) => s.status === 'Escalated')?.totalAmount ?? 0);
+    const collectionRate = total > 0 ? Math.round((collected / total) * 100) : 0;
+
+    return {
+      total,
+      collected,
+      outstanding,
+      atRisk,
+      collectionRate,
+    };
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Failed to fetch portfolio summary');
+  }
+}
+
+function isCollectionTrendData(value: unknown): value is CollectionTrendData {
+  return (
+    isObject(value) &&
+    typeof value.month === 'string' &&
+    typeof value.collected === 'number' &&
+    typeof value.outstanding === 'number'
+  );
+}
+
+function isCollectionTrendResponse(value: unknown): value is CollectionTrendResponse {
+  return (
+    isObject(value) &&
+    Array.isArray(value.trend) &&
+    value.trend.every((item) => isCollectionTrendData(item)) &&
+    typeof value.generatedAt === 'string'
+  );
+}
+
+export async function fetchCollectionTrend(): Promise<CollectionTrendResponse> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/trend`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Collection trend API error: ${response.statusText} (${response.status})`);
+    }
+
+    const data: unknown = await response.json();
+    
+    if (!isCollectionTrendResponse(data)) {
+      throw new Error('Invalid collection trend response format');
+    }
+
+    return data;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Failed to fetch collection trend');
+  }
+}
+
+export interface QueueInvoice {
+  id: string;
+  client?: string;
+  invoiceId?: string;
+  amount: number;
+  dueDate?: string;
+  daysOverdue?: number;
+  status: string;
+}
+
+export async function fetchAnalyticsInvoices(): Promise<QueueInvoice[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics`, {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Analytics invoices API error: ${response.statusText} (${response.status})`);
+    }
+
+    const data: unknown = await response.json();
+    
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid analytics invoices response format');
+    }
+
+    return data as QueueInvoice[];
+  } catch (error) {
+    throw error instanceof Error ? error : new Error('Failed to fetch analytics invoices');
+  }
 }
