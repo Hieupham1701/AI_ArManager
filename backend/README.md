@@ -80,10 +80,16 @@ Twilio account.
 
 ### Strategy (`/api/v1/strategy`)
 
-| Method | Path                 | Request → Response                                     | Description                          |
-| ------ | -------------------- | ------------------------------------------------------ | ------------------------------------ |
-| `POST` | `/update`            | `StrategyUpdateRequest` → `StrategyUpdateResponse`     | Evaluate invoice → strategy metadata |
-| `POST` | `/generate-reminder` | `GenerateReminderRequest` → `GenerateReminderResponse` | Generate a reminder preview          |
+The Strategy Orchestration Engine (owned by **Hung**) decides *what* should happen next for an invoice.
+It **does not** generate or send any communication; that responsibility belongs to the
+Communication layer (owned by **Hanh**).
+
+| Method | Path | Request → Response | Description |
+|--------|------|--------------------|-------------|
+| `POST` | `/update` | `StrategyUpdateRequest` → `StrategyResult` | Evaluate an invoice and return the full strategy recommendation (action, channel, tone, schedule, tier, risk, etc.). |
+| `POST` | `/generate-reminder` | `GenerateReminderRequest` → `GenerateReminderResponse` | Generate a deterministic *preview* of a reminder (no sending). |
+| `POST` | `/respond` | `DebtorResponse` → `{ "status": "ok" }` | Accept structured response data from Hiếu's response‑intelligence layer (e.g., promise‑to‑pay). |
+| `POST` | `/approve` | `{ "invoice_id": "...", "decision": "approved" }` → `{ "status": "ok" }` | Record the owner’s approval or rejection of the recommended strategy. |
 
 ### Health
 
@@ -152,7 +158,11 @@ class GenerateReminderResponse(BaseModel):
 
 ## 4. Strategy Engine Logic
 
-All heuristics are deterministic and live in `app/services/strategy_service.py`.
+All deterministic heuristics live in `backend/app/services/strategy_service.py`. The core function
+`evaluate_invoice` receives an invoice identifier, due date and amount, calculates the overdue
+days, determines the escalation tier, and builds a **full strategy recommendation** (`StrategyResult`).
+
+### 4.1 `StrategyResult` contract
 
 | Days Overdue        | Escalation Tier | Invoice Status | Risk Level | Next Action                                  |
 | ------------------- | --------------- | -------------- | ---------- | -------------------------------------------- |
@@ -163,7 +173,106 @@ All heuristics are deterministic and live in `app/services/strategy_service.py`.
 | > 30, amount > $50k | 5               | `CRITICAL`     | `CRITICAL` | Collections Referral                         |
 | > 30, amount ≤ $50k | 5               | `ESCALATED`    | `HIGH`     | Collections Referral                         |
 
-> **Reference date is fixed at `2026-06-22`** so evaluations are reproducible during development. It will be replaced by `datetime.now()` once the system is live.
+```json
+{
+  "invoice_id": "string",
+  "days_overdue": 0,
+  "status": "Overdue",
+  "risk_level": "Low",
+  "tier": "day_7",
+  "action": "payment_reminder",
+  "channel": "email",
+  "tone": "friendly",
+  "schedule": "immediate",
+  "reasoning": "optional free‑text explanation",
+  "decision": "pending"
+}
+```
+
+* **invoice_id** – the invoice identifier being evaluated.
+* **days_overdue** – integer number of days past the due date (`0` when not overdue).
+* **status** – one of the `InvoiceStatus` enum values (e.g., `OVERDUE`, `PAID`).
+* **risk_level** – one of the `RiskLevel` enum values.
+* **tier** – string identifier of the escalation tier (`day_0`, `day_3`, …).
+* **action** – high‑level action name (e.g., `payment_reminder`, `phone_call`).
+* **channel** – communication channel (`email`, `sms`, `phone`, `invoice_delivery`).
+* **tone** – tone of the next interaction (`friendly`, `professional`, `firm`, `protective`, `legal`).
+* **schedule** – when the action should be performed (`immediate` or an ISO‑8601 date string when a promise‑to‑pay is present).
+* **reasoning** – optional human‑readable explanation of the decision.
+* **decision** – owner’s current decision (`pending`, `approved`, `rejected`).
+
+### 4.2 New enums
+
+| Enum | Values |
+|------|--------|
+| `Channel` | `email`, `sms`, `phone`, `invoice_delivery` |
+| `Tone` | `friendly`, `professional`, `firm`, `protective`, `legal` |
+| `Decision` | `pending`, `approved`, `rejected` |
+
+These enums are defined in `backend/app/schemas/schemas.py` and are imported by the routers.
+
+### 4.3 Deterministic escalation mapping (`ESCALATION_TIERS`)
+
+```python
+ESCALATION_TIERS = [
+    {"tier": "day_0",  "minimum_days_overdue": 0,  "action": "invoice_issue",        "channel": Channel.EMAIL,  "tone": Tone.FRIENDLY,      "schedule": "immediate"},
+    {"tier": "day_3",  "minimum_days_overdue": 3,  "action": "payment_reminder",    "channel": Channel.EMAIL,  "tone": Tone.FRIENDLY,      "schedule": "immediate"},
+    {"tier": "day_7",  "minimum_days_overdue": 7,  "action": "payment_reminder",    "channel": Channel.SMS,    "tone": Tone.FIRM,          "schedule": "immediate"},
+    {"tier": "day_14", "minimum_days_overdue": 14, "action": "phone_call",          "channel": Channel.PHONE,  "tone": Tone.PROFESSIONAL, "schedule": "immediate"},
+    {"tier": "day_21", "minimum_days_overdue": 21, "action": "escalation_email",    "channel": Channel.EMAIL,  "tone": Tone.PROTECTIVE,   "schedule": "immediate"},
+    {"tier": "day_30", "minimum_days_overdue": 30, "action": "collections_referral", "channel": Channel.EMAIL,  "tone": Tone.LEGAL,        "schedule": "immediate"},
+]
+```
+
+The service selects the **last tier** whose `minimum_days_overdue` is less than or equal to the
+calculated `days_overdue`.
+
+### 4.4 `evaluate_invoice`
+
+Signature (as of the current implementation):
+
+```python
+def evaluate_invoice(
+    invoice_id: str,
+    due_date: datetime,
+    amount: float,
+    reference_date: datetime | None = None,
+) -> dict:
+    ...
+```
+
+* Calculates `days_overdue = max((reference_date or 2026‑06‑22) - due_date, 0)`.
+* Looks up the appropriate tier using `_lookup_tier`.
+* Derives `status` via `_invoice_status` and `risk_level` via `_risk_level`.
+* Checks for a stored `DebtorResponse` (see section 4.5) and adjusts `action`, `channel`, `tone`
+  and `schedule` accordingly:
+  * **promise_to_pay** – schedule is set to the promised date, tone softened to *friendly*.
+  * **financial_hardship** – tone becomes *protective*.
+  * **dispute** – action changes to `dispute_review`, channel forced to **email**, tone set to *professional*.
+* Retrieves the current owner decision (`pending` by default) from the in‑memory approval store.
+* Returns a plain ``dict`` that matches the `StrategyResult` model.
+
+### 4.5 `DebtorResponse` contract (used by Hiếu)
+
+```json
+{
+  "invoice_id": "string",
+  "intent": "promise_to_pay" | "dispute" | "financial_hardship" | "question" | "refusal" | "unknown",
+  "promised_date": "2026-08-14T00:00:00" ,
+  "amount": 5000.0
+}
+```
+
+Only `invoice_id` and `intent` are required; `promised_date` and `amount` are optional and used
+by the strategy engine when the intent is `promise_to_pay`.
+
+### 4.6 In‑memory state (mock stage)
+
+* **Debtor responses** are stored in the module‑level dict `_DEBTOR_RESPONSES` inside
+  `strategy_service.py`. They persist only for the lifetime of the process.
+* **Owner approvals** are stored in `_APPROVALS` (same module). The default state is `pending`.
+* This approach keeps the current implementation fully deterministic and removes any
+  database dependency. Future work will replace these with PostgreSQL tables.
 
 ---
 

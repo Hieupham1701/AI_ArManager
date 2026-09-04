@@ -9,50 +9,45 @@ All responses are deterministic mocks aligned with app.schemas.
 """
 
 from datetime import datetime
-from fastapi import APIRouter
+from fastapi import APIRouter, Body, HTTPException
 
 from app.schemas import (
     StrategyUpdateRequest,
-    StrategyUpdateResponse,
+    StrategyResult,
     GenerateReminderRequest,
     GenerateReminderResponse,
+    DebtorResponse,
+    Decision,
 )
-from app.services.strategy_service import evaluate_invoice
+from app.services.strategy_service import evaluate_invoice, store_debtor_response, set_approval
 from app.services.reminder_service import generate_reminder
 
 router = APIRouter(tags=["Strategy"])
 
 
-@router.post("/strategy/update", response_model=StrategyUpdateResponse)
-async def post_strategy_update(payload: StrategyUpdateRequest) -> StrategyUpdateResponse:
-    """
-    Evaluate an invoice and return strategy metadata.
+@router.post("/strategy/update", response_model=StrategyResult)
+async def post_strategy_update(payload: StrategyUpdateRequest) -> StrategyResult:
+    """Evaluate an invoice and return the full strategy result.
 
-    Computes days overdue, status, risk level, escalation tier, and next action
-    using deterministic heuristics. Gemini will replace the heuristics later
-    without changing the API contract.
+    The response includes action, channel, tone, schedule, tier, risk, etc.
     """
     # Parse due_date string — supports ISO and common human formats
     due_date = _parse_due_date(payload.due_date)
 
-    result = evaluate_invoice(due_date, payload.amount)
-
-    return StrategyUpdateResponse(
-        days_overdue=result["days_overdue"],
-        status=result["status"],
-        risk_level=result["risk_level"],
-        current_escalation_tier=result["current_escalation_tier"],
-        next_action=result["next_action"],
+    result = evaluate_invoice(
+        invoice_id=payload.invoice_id,
+        due_date=due_date,
+        amount=payload.amount,
     )
+
+    return StrategyResult(**result)
 
 
 @router.post("/strategy/generate-reminder", response_model=GenerateReminderResponse)
 async def post_generate_reminder(payload: GenerateReminderRequest) -> GenerateReminderResponse:
-    """
-    Generate a reminder preview for the given invoice.
+    """Generate a reminder preview for the given invoice.
 
-    Currently returns deterministic mock text. Gemini (gemini-2.5-flash)
-    will power this endpoint later without router changes.
+    This remains a deterministic preview – it does **not** send anything.
     """
     reminder = generate_reminder(
         invoice_id=payload.invoice_id,
@@ -62,6 +57,32 @@ async def post_generate_reminder(payload: GenerateReminderRequest) -> GenerateRe
         tone=payload.tone or "professional",
     )
     return GenerateReminderResponse(reminder=reminder)
+
+# ---------------------------------------------------------------------------
+# New endpoints for debtor response and owner approval
+# ---------------------------------------------------------------------------
+
+@router.post("/strategy/respond", status_code=200)
+async def post_debtor_response(resp: DebtorResponse) -> dict:
+    """Receive structured response data from Hiếu's intelligence layer."""
+    store_debtor_response(resp)
+    return {"status": "ok"}
+
+@router.post("/strategy/approve", status_code=200)
+async def post_strategy_approval(
+    payload: dict = Body(...),
+) -> dict:
+    """Owner records an approval or rejection for a given invoice strategy."""
+    invoice_id = payload.get("invoice_id")
+    decision_str = payload.get("decision")
+    if not invoice_id or not decision_str:
+        raise HTTPException(status_code=400, detail="invoice_id and decision required")
+    try:
+        decision = Decision(decision_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="invalid decision value")
+    set_approval(invoice_id, decision)
+    return {"status": "ok"}
 
 
 # ---------------------------------------------------------------------------

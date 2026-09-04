@@ -6,7 +6,8 @@ They are intentionally aligned with frontend/src/types/invoice.ts.
 """
 
 from enum import Enum
-from typing import List, Optional
+from typing import List, Optional, Literal
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 
@@ -209,6 +210,8 @@ class InvoiceStatusAggregate(BaseModel):
     totalAmount: float
     count: int
     averageAmount: float
+
+
 class AnalyticsResponse(BaseModel):
     """Aggregated invoice metrics grouped by status."""
     byStatus: List[InvoiceStatusAggregate]
@@ -267,3 +270,74 @@ class DebtorResponseSubmitResponse(BaseModel):
     suggested_strategy: SuggestedNextActionResponse
     message: str
 
+
+# ---------------------------------------------------------------------------
+# New Enums for Strategy Engine
+# ---------------------------------------------------------------------------
+
+class Channel(str, Enum):
+    """Communication channel used for the next collection action."""
+    EMAIL = "email"
+    SMS = "sms"
+    PHONE = "phone"
+    INVOICE_DELIVERY = "invoice_delivery"
+
+
+class Tone(str, Enum):
+    """Tone of the next interaction, following the progressive escalation model."""
+    FRIENDLY = "friendly"
+    PROFESSIONAL = "professional"
+    FIRM = "firm"
+    PROTECTIVE = "protective"
+    LEGAL = "legal"
+
+
+class Decision(str, Enum):
+    """Owner's decision on the recommended strategy action."""
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+
+
+# ---------------------------------------------------------------------------
+# New Strategy Result Model
+# ---------------------------------------------------------------------------
+
+class StrategyResult(BaseModel):
+    """Full recommendation returned by the Strategy Engine.
+
+    This model describes *what* should happen, not the actual communication.
+    """
+    invoice_id: str
+    days_overdue: int
+    status: InvoiceStatus
+    risk_level: RiskLevel
+    tier: str
+    action: str
+    channel: Channel
+    tone: Tone
+    schedule: str
+    reasoning: Optional[str] = None
+    decision: Decision = Decision.PENDING
+
+
+# ---------------------------------------------------------------------------
+# Debtor Response Contract (Hiếu output)
+# ---------------------------------------------------------------------------
+
+class DebtorResponse(BaseModel):
+    """Structured data produced by Hiếu's response‑intelligence layer.
+
+    The Strategy Engine uses this to adjust escalation.
+    """
+    invoice_id: str
+    intent: Literal[
+        "promise_to_pay",
+        "dispute",
+        "financial_hardship",
+        "question",
+        "refusal",
+        "unknown",
+    ]
+    promised_date: Optional[datetime] = None
+    amount: Optional[float] = None
